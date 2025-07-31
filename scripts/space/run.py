@@ -124,6 +124,7 @@ def get_sequences(wt_sequence, df, experiment_id=None):
     return df
 
 def score_variants(assay, model,  base_dir, results_dir, score_column, batch_size=1):
+    cache_file = os.path.join(args.cache_dir, f"{assay['DMS_ID']}_embeddings.npy")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     dataset = assay['DMS_ID']
     if 'snoRNA' in dataset:
@@ -143,43 +144,52 @@ def score_variants(assay, model,  base_dir, results_dir, score_column, batch_siz
     except AssertionError as e:
         print("assertion error", e, "in", dataset)
         return
+    if os.path.exists(cache_file):
+        print(f"Loading cached embeddings from {cache_file}")
+        scores = np.load(cache_file)
+        df[score_column] = scores
+        df.to_csv(os.path.join(results_dir, f"{dataset}.csv"), index=False)
+    else:
+        output_file = os.path.join(results_dir, f"{dataset}.csv")
 
-    output_file = os.path.join(results_dir, f"{dataset}.csv")
-
-    max_length = 131072
-    scores = []
-
-
-    sequences = df.mutated_sequence
-    print("Processing total sequence of:", len(sequences))
-    # Process sequences in batches
-    for i in tqdm(range(0, len(sequences), batch_size), desc="Processing batches"):
-        # batch = sequences[i:i + batch_size]
-        # Check and truncate sequences if they exceed the model's maximum length
-        # Pad the sequences to the maximum length
-        seq = sequences.iloc[i]
-        if len(seq) > max_length:
-            seq = seq[:max_length]
-        elif len(seq) < max_length:
-            seq = seq.ljust(max_length, '-')
-        # Map ACGTN to 01234, -1 for padding
-        mapping = {'A': 0, 'C': 1, 'G': 2, 'T': 3, 'N': 4, '-': -1 , 'X': 4, "U": 3}
-        tokens = torch.tensor([mapping[base] for base in seq], dtype=torch.long)
-        # Move tensors to the appropriate device
-        tokens = tokens.to(device)
-
-        with torch.no_grad():
-            logits = model(tokens)["out"]
-            normalized_logits = F.log_softmax(logits, dim=-1)
-
-        log_prob = logits.squeeze(dim=0)
-        avg_log_prob = torch.mean(log_prob,dim=0)
-        avg_log_prob = avg_log_prob.cpu().numpy()
+        max_length = 131072
+        scores = []
 
 
-        scores.append(avg_log_prob)
-    scores = np.vstack(scores)
-    print("Scores shape:", scores.shape)
+        sequences = df.mutated_sequence
+        print("Processing total sequence of:", len(sequences))
+        # Process sequences in batches
+        for i in tqdm(range(0, len(sequences), batch_size), desc="Processing batches"):
+            # batch = sequences[i:i + batch_size]
+            # Check and truncate sequences if they exceed the model's maximum length
+            # Pad the sequences to the maximum length
+            seq = sequences.iloc[i]
+            if len(seq) > max_length:
+                seq = seq[:max_length]
+            elif len(seq) < max_length:
+                seq = seq.ljust(max_length, '-')
+            # Map ACGTN to 01234, -1 for padding
+            mapping = {'A': 0, 'C': 1, 'G': 2, 'T': 3, 'N': 4, '-': -1 , 'X': 4, "U": 3}
+            tokens = torch.tensor([mapping[base] for base in seq], dtype=torch.long)
+            # Move tensors to the appropriate device
+            tokens = tokens.to(device)
+
+            with torch.no_grad():
+                logits = model(tokens)["out"]
+                normalized_logits = F.log_softmax(logits, dim=-1)
+
+            log_prob = logits.squeeze(dim=0)
+            avg_log_prob = torch.mean(log_prob,dim=0)
+            avg_log_prob = avg_log_prob.cpu().numpy()
+
+
+            scores.append(avg_log_prob)
+        scores = np.vstack(scores)
+        print("Scores shape:", scores.shape)
+        # Save the scores to a cache file
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        np.save(cache_file, scores)
+        print(f"Scores saved to {cache_file}")
     corr,pval,scores = evaluate(scores, df["dms_score"].values, cv=args.cv,
                                         few_shot_k=args.few_shot_k, few_shot_repeat=args.few_shot_repeat)
     df[score_column] = scores
@@ -253,6 +263,8 @@ if __name__ == "__main__":
                         help="Number of samples for few-shot evaluation (default: None, use full data)")
     parser.add_argument("--few_shot_repeat", type=int, default=5,
                         help="Number of repeats for few-shot evaluation (default: 5)")
+    parser.add_argument("--cache_dir", type=str, default="/data4/marunze/space/cache/",
+                        help="Directory to cache embeddings (optional, for large datasets)")
     args = parser.parse_args()
     main(args)
 

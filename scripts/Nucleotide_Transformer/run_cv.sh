@@ -11,7 +11,7 @@ DMS_index=$((44))  # Change this to the desired DMS index
 export HF_ENDPOINT=https://hf-mirror.com
     # Remove existing score files and create a new summary file
 # Get the current index from the array (0-31)
-export CUDA_VISIBLE_DEVICES=0  # Set to the GPU you want to use
+export CUDA_VISIBLE_DEVICES=2 # Set to the GPU you want to use
 
     # Run the scoring script with the array task ID
     python compute_fitness.py \

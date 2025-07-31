@@ -17,6 +17,7 @@ def create_parser():
     parser.add_argument("--few_shot_k", type=int, default=None, help="Number of samples for few-shot evaluation")
     parser.add_argument("--few_shot_repeat", type=int, default=5, help="Number of repeats for few-shot evaluation")
     parser.add_argument("--cv", action='store_true', help="Use cross-validation for evaluation")
+    parser.add_argument("--cache_dir", type=str, default="/data4/marunze/rnafm/cache/", help="Directory to cache embeddings (optional, for large datasets)")
     return parser
 def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=None, few_shot_repeat=5, seed=42):
     np.random.seed(seed)
@@ -61,9 +62,15 @@ def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=No
         return np.mean(corrs), np.std(corrs), avg_emb
     
     if cv:
-        model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_values=True)
-        model.fit(emb, sc)
-        preds = model.predict(emb)
+        if emb.ndim > 2:
+            emb = emb.mean(axis=1)
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=5, shuffle=True, random_state=seed)
+        preds = np.zeros(len(sc))
+        for train_index, test_index in kf.split(emb):
+            model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_values=True)
+            model.fit(emb[train_index], sc[train_index])
+            preds[test_index] = model.predict(emb[test_index])
         corr, pval = spearmanr(preds, sc)
         avg_emb = preds
     else:
@@ -414,93 +421,106 @@ def compute_scores_wt(model, alphabet, batch_converter, reference, args):
 def score_variants(model, alphabet, batch_converter, reference, args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
-    
     for index, row in reference.iterrows():
 
         name = row['DMS_ID']
+        cache_file = f"{args.cache_dir}/{name}_embeddings.npy"
         wt_rna = row['RAW_CONSTRUCT_SEQ'].upper().replace('T', 'U')
         wt_rna_clean = clean_sequence(wt_rna, name)
         csv_path = row['PATH']
         seq_len = len(wt_rna)
+        if os.path.exists(cache_file):
+            print(f"Loading cached embeddings from {cache_file}")
+            scores = np.load(cache_file)
+        else:
+            try:
+                if seq_len + 2 <= 1024:
+                    # Full sequence fits
+                    data = [(name, wt_rna_clean)]
+                    batch_labels, batch_strs, batch_tokens = batch_converter(data)
+                    batch_tokens = batch_tokens.to(device)
 
-        try:
-            if seq_len + 2 <= 1024:
-                # Full sequence fits
-                data = [(name, wt_rna_clean)]
-                batch_labels, batch_strs, batch_tokens = batch_converter(data)
-                batch_tokens = batch_tokens.to(device)
+                    max_token_idx = batch_tokens.max().item()
+                    if max_token_idx >= len(alphabet):
+                        print(f"[ERROR] Token index {max_token_idx} out of range (alphabet size: {len(alphabet)}) for assay '{name}'")
+                        continue
 
-                max_token_idx = batch_tokens.max().item()
-                if max_token_idx >= len(alphabet):
-                    print(f"[ERROR] Token index {max_token_idx} out of range (alphabet size: {len(alphabet)}) for assay '{name}'")
-                    continue
+                    with torch.no_grad():
+                        results = model(batch_tokens, repr_layers=[12])
+                        token_probs = torch.log_softmax(results["logits"], dim=-1)
+                        print("Shape of token_probs:", token_probs.shape)
+                else:
+                    token_probs = None  # Will trigger windowing
 
-                with torch.no_grad():
-                    results = model(batch_tokens, repr_layers=[12])
-                    token_probs = torch.log_softmax(results["logits"], dim=-1)
-                    print("Shape of token_probs:", token_probs.shape)
-            else:
-                token_probs = None  # Will trigger windowing
+            except Exception as model_error:
+                print(f"\n[ERROR] Model inference failed for assay '{name}'")
+                print(f"  Exception type : {type(model_error).__name__}")
+                print(f"  Error message  : {model_error}")
+                print(f"  Sequence length: {seq_len}")
+                continue
 
-        except Exception as model_error:
-            print(f"\n[ERROR] Model inference failed for assay '{name}'")
-            print(f"  Exception type : {type(model_error).__name__}")
-            print(f"  Error message  : {model_error}")
-            print(f"  Sequence length: {seq_len}")
-            continue
+            try:
+                mut_df = pd.read_csv(csv_path)
+                mut_df = mut_df[~mut_df['mutant'].isna()]
+                mut_df['mutant'] = (
+                    mut_df['mutant']
+                    .astype(str)
+                    .str.upper()
+                    .str.strip()
+                    .str.replace("T", "U")
+                    .str.replace(" ", "")
+                )
 
-        try:
-            mut_df = pd.read_csv(csv_path)
-            mut_df = mut_df[~mut_df['mutant'].isna()]
-            mut_df['mutant'] = (
-                mut_df['mutant']
-                .astype(str)
-                .str.upper()
-                .str.strip()
-                .str.replace("T", "U")
-                .str.replace(" ", "")
-            )
+                valid_mask = mut_df['mutant'].str.match(r'^([AUCGN][0-9]+[AUCG])(,[AUCGN][0-9]+[AUCG])*$')
+                if not valid_mask.all():
+                    print(f"[WARNING] Invalid mutation format found in assay '{name}':")
+                    print(mut_df[~valid_mask])
+                mut_df = mut_df[valid_mask]
+                mut_list = mut_df['mutant'].to_list()
 
-            valid_mask = mut_df['mutant'].str.match(r'^([AUCGN][0-9]+[AUCG])(,[AUCGN][0-9]+[AUCG])*$')
-            if not valid_mask.all():
-                print(f"[WARNING] Invalid mutation format found in assay '{name}':")
-                print(mut_df[~valid_mask])
-            mut_df = mut_df[valid_mask]
-            mut_list = mut_df['mutant'].to_list()
+                scores = []
+                failed_mutations = []
+                sequences = mut_df["sequence"].tolist() 
+                batch_size = 8
+                for batch in tqdm(range(0, len(mut_list), batch_size), desc=f"Processing batches ({name})"):
+                    try:
+                        batch_idx = mut_list[batch:batch + batch_size]
+                        batch_seqs = sequences[batch:batch + batch_size]
+                        data = [(name,seq) for name,seq in zip(batch_idx, batch_seqs)]
+                        _,_,tokens = batch_converter(data)
+                        tokens = tokens.to(device)
+                        results = model(tokens, repr_layers=[12])
 
-            scores = []
-            failed_mutations = []
-            sequences = mut_df["sequence"].tolist() 
-            batch_size = 8
-            for batch in tqdm(range(0, len(mut_list), batch_size), desc=f"Processing batches ({name})"):
-                try:
-                    batch_idx = mut_list[batch:batch + batch_size]
-                    batch_seqs = sequences[batch:batch + batch_size]
-                    data = [(name,seq) for name,seq in zip(batch_idx, batch_seqs)]
-                    _,_,tokens = batch_converter(data)
-                    tokens = tokens.to(device)
-                    results = model(tokens, repr_layers=[12])
+                        token_embeddings = results["representations"][12]
+                        # pooling on the last dimension (token dimension)
+                        token_embeddings = token_embeddings.mean(dim=1)
 
-                    token_embeddings = results["representations"][12]
-                    # pooling on the last dimension (token dimension)
-                    token_embeddings = token_embeddings.mean(dim=1)
+                        scores.append(token_embeddings.detach().cpu().numpy())
+                    except Exception as mutation_error:
+                        raise mutation_error
 
-                    scores.append(token_embeddings.detach().cpu().numpy())
-                except Exception as mutation_error:
-                    raise mutation_error
-
-            # if failed_mutations:
-            #     print(f"\n[SUMMARY] Assay '{name}' had {len(failed_mutations)} failed mutations:")
-            #     for fm in failed_mutations:
-            #         print(f"  ➤ {fm}")
-            #     print("-" * 60)
-            scores = np.vstack(scores) 
+                # if failed_mutations:
+                #     print(f"\n[SUMMARY] Assay '{name}' had {len(failed_mutations)} failed mutations:")
+                #     for fm in failed_mutations:
+                #         print(f"  ➤ {fm}")
+                #     print("-" * 60)
+                scores = np.vstack(scores) 
+                # Save the scores to a cache file
+                os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+                np.save(cache_file, scores)
+                print(f"Scores saved to {cache_file}")
             # mask = ~np.isnan(scores).any(axis=1) 
             # if not mask.all():
             #     num_nan = len(scores) - mask.sum()
             #     print(f"[WARNING] {num_nan} samples have NaN scores and will be excluded from evaluation")
             # scores = scores[mask]
             # mut_df = mut_df[mask].reset_index(drop=True)
+            except Exception as e:
+                print(f"\n[ERROR] Failed to process mutations for assay '{name}'")
+                print(f"  Exception type : {type(e).__name__}")
+                print(f"  Error message  : {e}")
+                print("-" * 80)
+                continue
             mask = ~np.isnan(mut_df['DMS_score'].values)
             corr,pval,pred_scores = evaluate(scores, mut_df['DMS_score'].values, cv=args.cv,
                                         few_shot_k=args.few_shot_k, few_shot_repeat=args.few_shot_repeat)
@@ -517,16 +537,13 @@ def score_variants(model, alphabet, batch_converter, reference, args):
                     summary_file.write("Assay,Correlation\n")
             with open(summary_path, 'a') as summary_file:
                 summary_file.write(f"{name},{corr:.4f},{pval:.4f}\n")
-        except Exception as e:
-            print(f"\n[ERROR] Failed during mutation processing for assay '{name}'")
-            print(f"  Exception type : {type(e).__name__}")
-            print(f"  Error message  : {e}")
-            print("-" * 80)
+
             
 
 def main(args):
 
     sys.path.insert(1, args.model_location)
+    sys.path.append("/home/ma_run_ze/lzm/rnagym/fitness/scripts/RNA_FM/RNA-FM")
     import fm
     model, alphabet = fm.pretrained.rna_fm_t12()
     batch_converter = alphabet.get_batch_converter()

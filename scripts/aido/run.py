@@ -15,6 +15,7 @@ from tqdm.auto import tqdm
 from transformers import PreTrainedModel
 import re
 import torch.nn.functional as F
+
 from modelgenerator.tasks import Embed
 
 from sklearn.linear_model import Ridge
@@ -234,10 +235,15 @@ def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=No
 
     # 原始 CV 模式
     if cv:
-        model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_results=True)
-        emb = emb.mean(axis=1)
-        model.fit(emb, sc)
-        preds = model.predict(emb)
+        if emb.ndim > 2:
+            emb = emb.mean(axis=1)
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=5, shuffle=True, random_state=seed)
+        preds = np.zeros(len(sc))
+        for train_index, test_index in kf.split(emb):
+            model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_results=True)
+            model.fit(emb[train_index], sc[train_index])
+            preds[test_index] = model.predict(emb[test_index])
         corr, pval = spearmanr(preds, sc)
         avg_emb = preds
     else:

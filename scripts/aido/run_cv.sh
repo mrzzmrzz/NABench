@@ -7,7 +7,8 @@ export dms_data_dir="/home/ma_run_ze/lzm/rnagym/fitness/fitness_processed_assays
 mkdir -p "$output_scores_dir"
 # https://huggingface.co/InstaDeepAI/nucleotide-transformer-2.5b-multi-species
 DMS_index=$((44))  # Change this to the desired DMS index
-
+export HF_ENDPOINT=https://hf-mirror.com
+export CUDA_VISIBLE_DEVICES=7  # Set to the GPU you want to use
     # Remove existing score files and create a new summary file
 # Get the current index from the array (0-31)
 export CUDA_VISIBLE_DEVICES=0  # Set to the GPU you want to use

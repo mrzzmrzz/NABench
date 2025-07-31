@@ -106,6 +106,12 @@ def parse_args():
         action="store_true",
         help="Enable cross-validation"
     )
+    parser.add_argument(
+        "--cache_dir",
+        type=str,
+        default="/data4/marunze/dnabert/cache/",
+        help="Directory to cache model files"
+    )
     return parser.parse_args()
 
 def load_reference_data(ref_sheet_path: str, row_id: int) -> str:
@@ -214,9 +220,15 @@ def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=No
 
     # 原始 CV 模式
     if cv:
-        model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_values=True)
-        model.fit(emb, sc)
-        preds = model.predict(emb)
+        if emb.ndim > 2:
+            emb = emb.mean(axis=1)
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=5, shuffle=True, random_state=seed)
+        preds = np.zeros(len(sc))
+        for train_index, test_index in kf.split(emb):
+            model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_values=True)
+            model.fit(emb[train_index], sc[train_index])
+            preds[test_index] = model.predict(emb[test_index])
         corr, pval = spearmanr(preds, sc)
         avg_emb = preds
     else:
@@ -227,7 +239,7 @@ def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=No
 
 
 
-def run_inference(model, tokenizer, sequences: list, device: str, batch_size: int) -> np.ndarray:
+def run_inference(model, tokenizer, dms_id ,sequences: list, device: str, batch_size: int) -> np.ndarray:
     """
     Run Evo model inference on sequences in batches.
     
@@ -241,6 +253,12 @@ def run_inference(model, tokenizer, sequences: list, device: str, batch_size: in
     Returns:
         np.ndarray: Log probabilities array
     """
+    cache_file = Path(args.cache_dir) / f"{dms_id}_embeddings.npy"
+    if cache_file.exists():
+        print(f"Loading cached embeddings from {cache_file}")
+        embeddings = np.load(cache_file)
+        return embeddings
+    
     dataset = SequenceDataset(sequences)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     
@@ -268,7 +286,13 @@ def run_inference(model, tokenizer, sequences: list, device: str, batch_size: in
 
         all_embed.extend(embed.cpu().numpy())
     # tunc dim 1 to be the same
-    
+    all_embed = np.array(all_embed, dtype=np.float64)  # Convert to float64 for stability
+    if all_embed.ndim > 2:
+        all_embed = all_embed.mean(axis=1)
+    # Save embeddings to cache
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+    np.save(cache_file, all_embed)
+    print(f"Embeddings saved to {cache_file}")
     return all_embed
     
 
@@ -285,6 +309,9 @@ def main(args):
     # Load DMS ID from reference sheet
     dms_id = load_reference_data(args.ref_sheet, args.row_id)
     print(f"Processing DMS ID: {dms_id}")
+    if not os.path.exists(correlation_file):
+        with open(correlation_file, 'w') as f:
+            f.write("DMS_ID,Spearman_Correlation,p-value\n")
     with open(correlation_file, 'r') as f:
         lines = f.readlines()
         for line in lines[1:]:
@@ -319,6 +346,7 @@ def main(args):
     embed = run_inference(
         model, 
         tokenizer, 
+        dms_id,  # Pass dms_id to run_inference
         sequences, 
         args.device, 
         args.batch_size

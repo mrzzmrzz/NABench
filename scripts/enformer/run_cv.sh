@@ -9,7 +9,7 @@ mkdir -p "$output_scores_dir"
 touch "$output_scores_dir/correlation_summary.txt"
 export HF_ENDPOINT=https://hf-mirror.com
 # Get the current index from the array (0-31)
-export CUDA_VISIBLE_DEVICES=7
+export CUDA_VISIBLE_DEVICES=6
 
     # Run the scoring script with the array task ID
     python run.py \

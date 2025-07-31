@@ -105,9 +105,15 @@ def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=No
         return np.mean(corrs), np.std(corrs), avg_emb
     
     if cv:
-        model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_values=True)
-        model.fit(emb, sc)
-        preds = model.predict(emb)
+        if emb.ndim > 2:
+            emb = emb.mean(axis=1)
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=5, shuffle=True, random_state=seed)
+        preds = np.zeros(len(sc))
+        for train_index, test_index in kf.split(emb):
+            model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_results=True)
+            model.fit(emb[train_index], sc[train_index])
+            preds[test_index] = model.predict(emb[test_index])
         corr, pval = spearmanr(preds, sc)
         avg_emb = preds
     else:
@@ -119,6 +125,9 @@ def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=No
 
     
 def score_variants(assay, model, tokenizer, base_dir, results_dir, score_column, batch_size):
+    cache_file = os.path.join(args.cache_dir, f"{assay['DMS_ID']}_embeddings.npy")
+    dataset = assay['DMS_ID']   
+    output_file = os.path.join(results_dir, f"{dataset}.csv")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     dataset = assay['DMS_ID']
     if 'snoRNA' in dataset:
@@ -139,30 +148,39 @@ def score_variants(assay, model, tokenizer, base_dir, results_dir, score_column,
 
     output_file = os.path.join(results_dir, f"{dataset}.csv")
 
-    max_length = tokenizer.model_max_length
-    scores = []
+    if os.path.exists(cache_file):
+        print(f"Loading cached embeddings from {cache_file}")
+        scores = np.load(cache_file)
+    else:
+
+        max_length = tokenizer.model_max_length
+        scores = []
 
 
-    sequences = df.mutated_sequence
-    # Process sequences in batches
-    for i in tqdm(range(0, len(sequences), batch_size), desc="Processing batches"):
-        batch = sequences[i:i + batch_size]
-        # Check and truncate sequences if they exceed the model's maximum length
-        batch = [seq[:max_length] for seq in batch]
+        sequences = df.mutated_sequence
+        # Process sequences in batches
+        for i in tqdm(range(0, len(sequences), batch_size), desc="Processing batches"):
+            batch = sequences[i:i + batch_size]
+            # Check and truncate sequences if they exceed the model's maximum length
+            batch = [seq[:max_length] for seq in batch]
 
-        # Tokenize the batch of sequences
-        tokens = tokenizer(batch, return_tensors="pt", padding="max_length", max_length=max_length, truncation=True).to(device)
+            # Tokenize the batch of sequences
+            tokens = tokenizer(batch, return_tensors="pt", padding="max_length", max_length=max_length, truncation=True).to(device)
 
-        # Process the batch
-        with torch.no_grad():
-            logits = model(input_ids=tokens['input_ids']).logits
-            normalized_logits = F.log_softmax(logits, dim=-1)
-            normalized_logits = normalized_logits.cpu().numpy()
-        valid_lengths = np.array([len(seq) for seq in batch])
-        # mean pooling the logits with respect to the valid lengths
-        avg_log_prob = np.array([np.mean(logit[:length], axis=0) for logit, length in zip(normalized_logits, valid_lengths)])
-        scores.append(avg_log_prob)
-    scores = np.concatenate(scores, axis=0)
+            # Process the batch
+            with torch.no_grad():
+                logits = model(input_ids=tokens['input_ids']).logits
+                normalized_logits = F.log_softmax(logits, dim=-1)
+                normalized_logits = normalized_logits.cpu().numpy()
+            valid_lengths = np.array([len(seq) for seq in batch])
+            # mean pooling the logits with respect to the valid lengths
+            avg_log_prob = np.array([np.mean(logit[:length], axis=0) for logit, length in zip(normalized_logits, valid_lengths)])
+            scores.append(avg_log_prob)
+        scores = np.concatenate(scores, axis=0)
+        # Save the scores to a cache file
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        np.save(cache_file, scores)
+        print(f"Scores saved to {cache_file}")
     corr,pval,pred_scores = evaluate(scores, df["dms_score"].values, cv=args.cv,
                                         few_shot_k=args.few_shot_k, few_shot_repeat=args.few_shot_repeat)
 
@@ -222,7 +240,8 @@ if __name__ == "__main__":
                         help="Number of samples for few-shot evaluation (default: None, use full data)")
     parser.add_argument("--few_shot_repeat", type=int, default=5,
                         help="Number of repeats for few-shot evaluation (default: 5)")
-
+    parser.add_argument("--cache_dir", type=str, default="/data4/marunze/nt/cache/",
+                        help="Directory to cache embeddings (optional, for large datasets)")
     args = parser.parse_args()
     main(args)
 

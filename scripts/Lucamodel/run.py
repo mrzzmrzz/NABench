@@ -15,7 +15,7 @@ from sklearn.linear_model import RidgeCV, Ridge
 
 import torch
 import sys
-sys.path.append("/home/ma_run_ze/lzm/rnagym/fitness/baselines/LucaOne/LucaOneTasks/src/llm/lucagplm/")
+sys.path.append("/home/ma_run_ze/lzm/rnagym/fitness/scripts/Lucamodel/LucaOneTasks/src/llm/lucagplm/")
 # 引入LucaOne推理函数
 from get_embedding import predict_embedding
 
@@ -141,9 +141,15 @@ def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=No
 
     # 原始 CV 模式
     if cv:
-        model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_values=True)
-        model.fit(emb, sc)
-        preds = model.predict(emb)
+        if emb.ndim > 2:
+            emb = emb.mean(axis=1)
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=5, shuffle=True, random_state=seed)
+        preds = np.zeros(len(sc))
+        for train_index, test_index in kf.split(emb):
+            model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_values=True)
+            model.fit(emb[train_index], sc[train_index])
+            preds[test_index] = model.predict(emb[test_index])
         corr, pval = spearmanr(preds, sc)
         avg_emb = preds
     else:

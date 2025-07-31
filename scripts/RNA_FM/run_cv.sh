@@ -2,7 +2,7 @@
 
 # the directory containing RNA-FM model
 # downloaded fromc 
-export model_location="/home/ma_run_ze/lzm/rnagym/fitness/baselines/RNA_FM/RNA-FM"
+export model_location="/home/ma_run_ze/lzm/rnagym/fitness/baselines/RNA_FM/RNA-FM/"
 
 export reference_sheet="/home/ma_run_ze/lzm/rnagym/fitness/reference_sheet_final.csv"
 export dms_data_dir="/home/ma_run_ze/lzm/rnagym/fitness/fitness_processed_assays"

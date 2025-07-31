@@ -100,6 +100,17 @@ def parse_args():
         default=5,
         help="Number of repeats for few-shot evaluation (default: 5)"
     )
+    parser.add_argument(
+        "--cv",
+        action="store_true",
+        help="Enable cross-validation mode"
+    )
+    parser.add_argument(
+        "--cache_dir",
+        type=str,
+        default="/data4/marunze/birna/cache/",
+        help="Directory to cache model files"
+    )
     return parser.parse_args()
 
 def load_reference_data(ref_sheet_path: str, row_id: int) -> str:
@@ -169,7 +180,7 @@ class SequenceDataset(Dataset):
     def __getitem__(self, idx):
         return self.sequences[idx]
 
-def run_inference(model, tokenizer, sequences: list, device: str, batch_size: int) -> np.ndarray:
+def run_inference(model, tokenizer, dms_id,sequences: list, device: str, batch_size: int) -> np.ndarray:
     """
     Run Evo model inference on sequences in batches.
     
@@ -183,6 +194,12 @@ def run_inference(model, tokenizer, sequences: list, device: str, batch_size: in
     Returns:
         np.ndarray: Log probabilities array
     """
+    cahce_file = Path(args.cache_dir) / f"{dms_id}_embeddings.npy"
+    if cahce_file.exists():
+        print(f"Loading cached embeddings from {cahce_file}")
+        embeddings = np.load(cahce_file)
+        return embeddings
+
     dataset = SequenceDataset(sequences)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     
@@ -204,12 +221,18 @@ def run_inference(model, tokenizer, sequences: list, device: str, batch_size: in
             embed = embed.mean(dim=1) 
         all_embed.extend(embed.cpu().numpy())
     # tunc dim 1 to be the same
-    
+    all_embed = np.array(all_embed, dtype=np.float64)  # Convert to float64 for stability
+    if all_embed.ndim > 2:
+        all_embed = all_embed.mean(axis=1)
+    # Save embeddings to cache
+    cahce_file.parent.mkdir(parents=True, exist_ok=True)
+    np.save(cahce_file, all_embed)
+    print(f"Embeddings saved to {cahce_file}")
     return all_embed
     
 def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=None, few_shot_repeat=5, seed=42):
     np.random.seed(seed)
-    
+
     mask = ~np.isnan(scores)
     if not mask.all():
         num_nan = len(scores) - mask.sum()
@@ -246,9 +269,15 @@ def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=No
 
     # 原始 CV 模式
     if cv:
-        model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_values=True)
-        model.fit(emb, sc)
-        preds = model.predict(emb)
+        if emb.ndim > 2:
+            emb = emb.mean(axis=1)
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=5, shuffle=True, random_state=seed)
+        preds = np.zeros(len(sc))
+        for train_index, test_index in kf.split(emb):
+            model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_results=True)
+            model.fit(emb[train_index], sc[train_index])
+            preds[test_index] = model.predict(emb[test_index])
         corr, pval = spearmanr(preds, sc)
         avg_emb = preds
     else:
@@ -311,6 +340,7 @@ def main(args):
     embed = run_inference(
         model, 
         tokenizer, 
+        dms_id,
         sequences, 
         args.device, 
         args.batch_size
@@ -342,7 +372,7 @@ def main(args):
     # # 5. 交叉验证预测
     # y_pred = cross_val_predict(mdl, embed, true_labels, cv=5)
     # sequence_scores = y_pred       # Add scores to DataFrame
-    correlation, pvalue, sequence_scores = evaluate(embed, true_labels, cv=False, few_shot_k=args.few_shot_k, few_shot_repeat=args.few_shot_repeat)
+    correlation, pvalue, sequence_scores = evaluate(embed, true_labels, cv=args.cv, few_shot_k=args.few_shot_k, few_shot_repeat=args.few_shot_repeat)
 
     score_column = f"BiRNA-BERT_score"
     dms_df[score_column] = np.nan

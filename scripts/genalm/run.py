@@ -57,9 +57,15 @@ def evaluate(embeddings: np.ndarray, scores: np.ndarray, cv=False, few_shot_k=No
         return np.mean(corrs), np.std(corrs), avg_emb
     
     if cv:
-        model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_results=True)
-        model.fit(emb, sc)
-        preds = model.predict(emb)
+        if emb.ndim > 2:
+            emb = emb.mean(axis=1)
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=5, shuffle=True, random_state=seed)
+        preds = np.zeros(len(sc))
+        for train_index, test_index in kf.split(emb):
+            model = RidgeCV(alphas=np.logspace(-3, 3, 7), store_cv_results=True)
+            model.fit(emb[train_index], sc[train_index])
+            preds[test_index] = model.predict(emb[test_index])
         corr, pval = spearmanr(preds, sc)
         avg_emb = preds
     else:
@@ -114,62 +120,74 @@ def get_sequences(wt_sequence, df, experiment_id=None):
     return df
 
 def score_variants(assay, model, tokenizer, base_dir, results_dir, score_column, batch_size):
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    cache_file = os.path.join(args.cache_dir, f"{assay['DMS_ID']}_embeddings.npy")
     dataset = assay['DMS_ID']
-    if 'snoRNA' in dataset:
-        return
-    df_path = os.path.join(base_dir, f'{dataset}.csv')
-    df = pd.read_csv(df_path)
-    df.columns = df.columns.str.lower()
-    mutation_column = 'mutant' if 'mutant' in df.columns else 'mutation' if 'mutation' in df.columns else 'mutations' if 'mutations' in df.columns else None
-    df = df[~df[mutation_column].isna()]
-    df = df.loc[:, ~df.columns.duplicated()]
-    wt_seq = assay['Raw_Construct_Seq'.upper()].upper()
-
-    try:
-        df = get_sequences(wt_seq, df, experiment_id=dataset)
-    except AssertionError as e:
-        print("assertion error", e, "in", dataset)
-        return
 
     output_file = os.path.join(results_dir, f"{dataset}.csv")
 
-    max_length = 512
-    scores = []
+    if os.path.exists(cache_file):
+        print(f"Loading cached embeddings from {cache_file}")
+        scores = np.load(cache_file)
+    else:
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        dataset = assay['DMS_ID']
+        if 'snoRNA' in dataset:
+            return
+        df_path = os.path.join(base_dir, f'{dataset}.csv')
+        df = pd.read_csv(df_path)
+        df.columns = df.columns.str.lower()
+        mutation_column = 'mutant' if 'mutant' in df.columns else 'mutation' if 'mutation' in df.columns else 'mutations' if 'mutations' in df.columns else None
+        df = df[~df[mutation_column].isna()]
+        df = df.loc[:, ~df.columns.duplicated()]
+        wt_seq = assay['Raw_Construct_Seq'.upper()].upper()
+
+        try:
+            df = get_sequences(wt_seq, df, experiment_id=dataset)
+        except AssertionError as e:
+            print("assertion error", e, "in", dataset)
+            return
 
 
-    sequences = df.mutated_sequence
-    # Process sequences in batches
-    for i in tqdm(range(0, len(sequences), batch_size), desc="Processing batches"):
-        batch = sequences[i:i + batch_size]
-        # Check and truncate sequences if they exceed the model's maximum length
-        batch = [seq[:max_length] for seq in batch]
+        max_length = 512
+        scores = []
 
-        # Tokenize the batch of sequences
-        tokens = tokenizer(batch, return_tensors="pt", padding="max_length", max_length=max_length, truncation=True).to(device)
 
-        # Process the batch
-        with torch.no_grad():
-            embeddings = model(input_ids=tokens['input_ids'], output_hidden_states=True)["hidden_states"][-1]
-            normalized_embeddings = F.log_softmax(embeddings, dim=-1)
-            normalized_embeddings = normalized_embeddings.mean(dim=1)
-            normalized_embeddings = normalized_embeddings.cpu().numpy()
-        
-        # Compute average log probability of the correct tokens
-        # for j, seq in enumerate(batch):
-        #     input_ids = tokens['input_ids'][j]
-        #     # Ignore padding tokens
-        #     valid_length = (input_ids != tokenizer.pad_token_id).sum().item()
+        sequences = df.mutated_sequence
+        # Process sequences in batches
+        for i in tqdm(range(0, len(sequences), batch_size), desc="Processing batches"):
+            batch = sequences[i:i + batch_size]
+            # Check and truncate sequences if they exceed the model's maximum length
+            batch = [seq[:max_length] for seq in batch]
 
-        #     if valid_length == 0:
-        #         continue
+            # Tokenize the batch of sequences
+            tokens = tokenizer(batch, return_tensors="pt", padding="max_length", max_length=max_length, truncation=True).to(device)
 
-        #     # Get log probabilities of the correct tokens
-        #     log_probs = embeddings[j, torch.arange(valid_length), input_ids[:valid_length]]
-        #     avg_log_prob = log_probs.mean().item()
+            # Process the batch
+            with torch.no_grad():
+                embeddings = model(input_ids=tokens['input_ids'], output_hidden_states=True)["hidden_states"][-1]
+                normalized_embeddings = F.log_softmax(embeddings, dim=-1)
+                normalized_embeddings = normalized_embeddings.mean(dim=1)
+                normalized_embeddings = normalized_embeddings.cpu().numpy()
+            
+            # Compute average log probability of the correct tokens
+            # for j, seq in enumerate(batch):
+            #     input_ids = tokens['input_ids'][j]
+            #     # Ignore padding tokens
+            #     valid_length = (input_ids != tokenizer.pad_token_id).sum().item()
 
-            scores.append(normalized_embeddings)
-    scores = np.vstack(scores)
+            #     if valid_length == 0:
+            #         continue
+
+            #     # Get log probabilities of the correct tokens
+            #     log_probs = embeddings[j, torch.arange(valid_length), input_ids[:valid_length]]
+            #     avg_log_prob = log_probs.mean().item()
+
+                scores.append(normalized_embeddings)
+        scores = np.vstack(scores)
+        # Save the scores to a cache file
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        np.save(cache_file, scores)
+        print(f"Scores saved to {cache_file}")
     corr,pval,pred_scores = evaluate(scores, df["dms_score"].values, cv=args.cv,
                                        few_shot_k=args.few_shot_k, few_shot_repeat=args.few_shot_repeat)
     df[score_column] = pred_scores
@@ -228,6 +246,8 @@ if __name__ == "__main__":
                         help="Number of repeats for few-shot evaluation (default: 5)")
     parser.add_argument("--cv", action='store_true',
                         help="Use cross-validation for evaluation")
+    parser.add_argument("--cache_dir", type=str, default="/data4/ma_run_ze/genalm/",
+                        help="Directory to cache embeddings")
     args = parser.parse_args()
     main(args)
 

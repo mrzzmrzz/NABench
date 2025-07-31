@@ -9,7 +9,7 @@ export dms_data_dir="/home/ma_run_ze/lzm/rnagym/fitness/fitness_processed_assays
 mkdir -p "$output_scores_dir"
 touch "$output_scores_dir/correlation_summary.txt"
 # Get the current index from the array (0-31)
-export CUDA_VISIBLE_DEVICES=7
+export CUDA_VISIBLE_DEVICES=3
 export HF_ENDPOINT=https://hf-mirror.com
 
     # Run the scoring script with the array task ID
