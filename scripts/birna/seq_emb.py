@@ -52,13 +52,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--ref_sheet",
         type=str,
-        default="/home/ma_run_ze/lzm/rnagym/fitness/reference_sheet_final.csv",
+        default="",
         help="Path to the reference sheet containing the 'DMS_ID' column.",
     )
     parser.add_argument(
         "--dms_dir_path",
         type=str,
-        default="/home/ma_run_ze/lzm/rnagym/fitness/fitness_processed_assays",
+        default="",
         help="Directory containing the DMS assay CSV files.",
     )
     parser.add_argument(
@@ -143,8 +143,8 @@ class InferenceConfig:
     model_name: str = "buetnlpbio/birna-bert"
     tokenizer_name: str = "buetnlpbio/birna-tokenizer"
     device: str = "cuda:0"
-    ref_sheet: str = "/home/ma_run_ze/lzm/rnagym/fitness/reference_sheet_final.csv"
-    dms_dir_path: str = "/home/ma_run_ze/lzm/rnagym/fitness/fitness_processed_assays"
+    ref_sheet: str = ""
+    dms_dir_path: str = ""
     output_dir_path: str = "./results"
     batch_size: int = 32
 
