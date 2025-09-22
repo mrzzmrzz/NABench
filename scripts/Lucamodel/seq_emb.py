@@ -12,7 +12,7 @@ from tqdm.auto import tqdm
 # Add the LucaOne source directory to the Python path
 # You may need to adjust this path depending on your project structure
 sys.path.append(
-    "/home/ma_run_ze/lzm/rnagym/fitness/scripts/Lucamodel/LucaOneTasks/src/llm/lucagplm/"
+    ""
 )
 from get_embedding import predict_embedding
 
