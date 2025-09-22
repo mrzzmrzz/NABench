@@ -12,8 +12,8 @@ from tqdm.auto import tqdm
 # Add the CRAFTS_LM source directory to the Python path
 # You may need to adjust this path depending on your project structure
 base_dir = Path(__file__).parent.resolve()
-sys.path.extend([str(base_dir), "/home/ma_run_ze/lzm/rnagym/fitness/baselines/crafts/crafts_lm"])
-sys.path.append("/data_share/marunze/lzm/rnagym/fitness/scripts/crafts/crafts_lm")
+sys.path.extend([str(base_dir), ""])
+sys.path.append("")
 from crafts_lm.utils.lm import get_extractor
 
 
