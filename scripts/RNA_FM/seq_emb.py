@@ -4,7 +4,7 @@ from pathlib import Path
 from dataclasses import dataclass
 import argparse
 
-sys.path.append("/home/ma_run_ze/lzm/rnagym/fitness/scripts/RNA_FM/RNA-FM")
+sys.path.append("")
 import fm
 import pandas as pd
 import numpy as np
