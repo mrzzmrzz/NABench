@@ -148,7 +148,7 @@ def extract_features(
                 padded_inputs = padded_inputs.to(config.device)
 
                 # The model's forward pass returns (logits, loss). We only need logits.
-                logits, _ = model(padded_inputs, targets=None)  # 期望 logits: [B, S, H]
+                logits, _ = model(padded_inputs, targets=None)  
 
                 pad_id = tokenizer.pad_token_id
                 if pad_id is None:
