@@ -5,7 +5,7 @@ export reference_sheet=""
 export output_scores_dir=""
 export dms_data_dir=""
 mkdir -p "$output_scores_dir"
-DMS_index=$((44))  # Change this to the desired DMS index
+DMS_index=$((44))
 conda activate hyena-dna
     python seq_emb.py \
         --ref_sheet "$reference_sheet" \
