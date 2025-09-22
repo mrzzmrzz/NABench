@@ -288,10 +288,8 @@ def main(args):
     # Run inference in batches
     print(f"Running inference")
     embed = extract_features(config, sequences)
-    # 1. 准备数据
     true_labels = dms_df["DMS_score"].values
     print(f"Embed shape: {embed.shape}, True labels shape: {true_labels.shape}")
-    # 2. 把 inf 替换为 NaN
     embed[~np.isfinite(embed)] = np.nan
     mask = (
         ~np.isnan(true_labels) & np.isfinite(embed).all(axis=1)
