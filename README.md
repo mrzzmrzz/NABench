@@ -69,7 +69,8 @@ Our benchmark evaluates a total of 27 nucleotide foundation models, which are ca
 | [Enformer](https://github.com/google-deepmind/deepmind-research/tree/master/enformer) | 251M | 196608 | Single | BERT |
 | [SPACE](https://github.com/ZhuJiwei111/SPACE) | 588M | 131072 | Single | BERT |
 | [GENERator](https://github.com/GenerTeam/GENERator) | 3B | 16384 | 6-mer | GPT |
-| [RESM](https://github.com/yikunpku/RESM) | 150M/650M | -- | Single | BERT |
+| [RESM](https://github.com/yikunpku/RESM) | 150M | dynamic | Single | BERT |
+| [RESM](https://github.com/yikunpku/RESM) | 650M | dynamic | Single | BERT |
 | [structRFM](https://github.com/heqin-zhu/structRFM) | 86M | 512 | Single | BERT |
 
 
