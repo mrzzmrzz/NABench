@@ -41,35 +41,36 @@ Figure2?
 ## Baseline Models
 
 Our benchmark evaluates a total of 27 nucleotide foundation models, which are categorized into four main architectural classes: **BERT-like**, **GPT-like**, **Hyena**, and **LLaMA-based**.
+
 | Model | Params | Max Length | Tokenization | Architecture |
 |---|---|---|---|---|
-| [LucaVirus](https://www.biorxiv.org/content/10.1101/2025.06.14.659722v1) | 1.8B | 1280 | Single | BERT |
-| Evo2-7B-base | 7B | 8192 | Single | Hyena |
-| Evo2-7B | 7B | 131072 | Single | Hyena |
-| Evo-1-8k | 6.45B | 8192 | Single | Hyena |
-| Evo-1-8k-base | 6.45B | 131072 | single | Hyena |
-| GENA-LM | 336M | 512 | k-mer | BERT |
-| N.T.v2 | 500M | 2048 | k-mer | BERT |
-| N.T.v2 | 50M | 2048 | k-mer | BERT |
-| CRAFTS | 161M | 1024 | Single | GPT |
-| LucaOne| 1.8B | 1280 | Single | BERT |
-| AIDO.RNA | 1.6B | 1024 | Single | BERT |
-| BiRNA-BERT | 117M | dynamic | BPE | BERT |
-| Evo-1.5| 6.45B | 131072 | Single | Hyena |
-| GenSLM | 2.5B | 2048 | Codon | BERT |
-| HyenaDNA| 54.6M | up to 1M | Single | Hyena |
-| N.T.| 500M | 1000 | k-mer | BERT |
-| RFAMLlama | 88M | 2048 | Single | GPT |
-| RNA-FM | 99.52M | 1024 | Single | BERT |
-| RNAErnie | 105M | 1024 | Single | BERT |
-| GeneRNA | 350M | dynamic | BPE | GPT |
-| DNABERT | 117M | dynamic | k-mer | BERT |
-| RINALMo | 650M | 1022 | Single | BERT |
-| Enformer | 251M | 196608 | Single | BERT |
-| SPACE | 588M | 131072 | Single | BERT |
-| GENERator | 3B | 16384 | 6-mer | GPT |
-| RESM | 150M/650M | -- | Single | BERT |
-| structRFM | 86M | 512 | Single | BERT |
+| [LucaVirus](https://github.com/LucaOne/LucaVirus) | 1.8B | 1280 | Single | BERT |
+| [Evo2-7B-base](https://github.com/ArcInstitute/evo2) | 7B | 8192 | Single | Hyena |
+| [Evo2-7B](https://github.com/ArcInstitute/evo2) | 7B | 131072 | Single | Hyena |    
+| [Evo-1-8k](https://github.com/evo-design/evo) | 6.45B | 8192 | Single | Hyena |
+| [Evo-1-8k-base](https://github.com/evo-design/evo) | 6.45B | 131072 | single | Hyena |
+| [GENA-LM](https://github.com/AIRI-Institute/GENA_LM) | 336M | 512 | k-mer | BERT |
+| [N.T.v2](https://github.com/instadeepai/nucleotide-transformer) | 500M | 2048 | k-mer | BERT |
+| [N.T.v2](https://github.com/instadeepai/nucleotide-transformer) | 50M | 2048 | k-mer | BERT |
+| [CRAFTS](https://github.com/SaisaiSun/RLaffinity) | 161M | 1024 | Single | GPT |
+| [LucaOne](https://github.com/LucaOne/LucaOne) | 1.8B | 1280 | Single | BERT |
+| [AIDO.RNA](https://github.com/genbio-ai/AIDO) | 1.6B | 1024 | Single | BERT |
+| [BiRNA-BERT](https://github.com/buetnlpbio/BiRNA-BERT) | 117M | dynamic | BPE | BERT |
+| [Evo-1.5](https://github.com/evo-design/evo) | 6.45B | 131072 | Single | Hyena |
+| [GenSLM](https://github.com/ramanathanlab/genslm) | 2.5B | 2048 | Codon | BERT |
+| [HyenaDNA](https://github.com/HazyResearch/hyena-dna) | 54.6M | up to 1M | Single | Hyena |
+| [N.T.](https://github.com/instadeepai/nucleotide-transformer) | 500M | 1000 | k-mer | BERT |
+| [RFAMLlama](https://github.com/JinyuanSun/RFamLlama) | 88M | 2048 | Single | GPT |
+| [RNA-FM](https://github.com/ml4bio/RNA-FM) | 99.52M | 1024 | Single | BERT |
+| [RNAErnie](https://github.com/CatIIIIIIII/RNAErnie) | 105M | 1024 | Single | BERT |
+| [GenerRNA](https://github.com/pfnet-research/GenerRNA) | 350M | dynamic | BPE | GPT |
+| [DNABERT](https://github.com/jerryji1993/DNABERT) | 117M | dynamic | k-mer | BERT |
+| [RINALMo](https://github.com/lbcb-sci/RiNALMo) | 650M | 1022 | Single | BERT |
+| [Enformer](https://github.com/google-deepmind/deepmind-research/tree/master/enformer) | 251M | 196608 | Single | BERT |
+| [SPACE](https://github.com/ZhuJiwei111/SPACE) | 588M | 131072 | Single | BERT |
+| [GENERator](https://github.com/GenerTeam/GENERator) | 3B | 16384 | 6-mer | GPT |
+| [RESM](https://github.com/yikunpku/RESM) | 150M/650M | -- | Single | BERT |
+| [structRFM](https://github.com/heqin-zhu/structRFM) | 86M | 512 | Single | BERT |
 
 
 ## Resources
