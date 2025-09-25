@@ -36,8 +36,6 @@ Our comprehensive evaluation reveals a complex and interesting performance lands
 
 This suggests fundamental differences in the nature of the representations learned by these architectures. Detailed performance files and more in-depth analyses (e.g., breakdowns by nucleic acid type, mutational depth) can be found in the benchmarks folder.
 
-Figure2?
-
 ## Baseline Models
 
 Our benchmark evaluates a total of 27 nucleotide foundation models, which are categorized into four main architectural classes: **BERT-like**, **GPT-like**, **Hyena**, and **LLaMA-based**.
