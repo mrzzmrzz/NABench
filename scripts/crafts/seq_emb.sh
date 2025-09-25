@@ -1,12 +1,9 @@
 #!/bin/bash
-
-
+conda activate crafts
 export reference_sheet=""
 export output_scores_dir=""
 export dms_data_dir=""
 mkdir -p "$output_scores_dir"
-conda activate crafts
-
 python seq_emb.py \
   --model_name_or_path  \
   --ref_sheet "$reference_sheet" \

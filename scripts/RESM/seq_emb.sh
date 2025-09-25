@@ -1,8 +1,5 @@
 #!/bin/bash
-
-
 conda activate resm
-
 export reference_sheet=""
 export output_dir=""
 export dms_data_dir=""

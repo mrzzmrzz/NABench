@@ -1,13 +1,7 @@
 #!/bin/bash
-
-
+conda activate aido
 export reference_sheet=""
 export dms_data_dir=""
-mkdir -p "$output_scores_dir"
-DMS_index=$((44)) 
-source /data4/marunze/aido/bin/activate
-
-
 export output_dir=""
 export dms_data_dir=""
 mkdir -p "$output_dir"

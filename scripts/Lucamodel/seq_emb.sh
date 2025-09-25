@@ -1,10 +1,8 @@
 #!/bin/bash
-
-
+conda activate lucaone
 export reference_sheet=""
 export output_dir=""
 export dms_data_dir=""
-conda activate lucaone
 export llm_dir=""
 mkdir -p "$output_dir"
     python3 seq_emb.py \

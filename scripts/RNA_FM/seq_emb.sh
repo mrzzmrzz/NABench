@@ -1,11 +1,9 @@
 #!/bin/bash
-
-
+conda activate RNA-FM
 export model_location=""
 export reference_sheet=""
 export output_dir=""
 export dms_data_dir=""
-conda activate RNA-FM
 mkdir -p "$output_dir"
     python3 seq_emb.py \
     --output_dir_path "$output_dir" \

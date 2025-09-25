@@ -201,13 +201,13 @@ class InferenceConfig:
             self.num_attention_heads = 20
             self.num_layers = 30
             if self.model_path is None:
-                self.model_path = "./ckpt/RESM-150M-KDNY.ckpt"
+                self.model_path = "./RESM-150M-KDNY.ckpt"
         elif self.base_model == "RESM_650M":
             self.embed_dim = 1280
             self.num_attention_heads = 20
             self.num_layers = 33
             if self.model_path is None:
-                self.model_path = "./ckpt/RESM-650M-KDNY.pt"
+                self.model_path = "./RESM-650M-KDNY.pt"
         else:
             raise ValueError(f"Unknown base model: {self.base_model}")
 

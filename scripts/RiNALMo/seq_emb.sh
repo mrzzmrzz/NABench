@@ -1,10 +1,8 @@
 #!/bin/bash
-
-
+conda activate rinalmo
 export reference_sheet=""
 export output_dir=""
 export dms_data_dir=""
-conda activate rinalmo
 mkdir -p "$output_dir"
     python3 seq_emb.py \
     --output_dir_path "$output_dir" \

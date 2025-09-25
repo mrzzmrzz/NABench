@@ -1,13 +1,9 @@
 #!/bin/bash
-
-
-conda activate rnagym_env
-
+conda activate genalm
 export reference_sheet=""
 export output_dir=""
 export dms_data_dir=""
 export model_location="AIRI-Institute/gena-lm-bert-large-t2t"
-
 mkdir -p "$output_dir"
     python3 seq_emb.py \
     --output_dir_path "$output_dir" \

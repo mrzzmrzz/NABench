@@ -1,8 +1,5 @@
 #!/bin/bash
-
-
 conda activate dna
-
 export reference_sheet=""
 export model_name="zhihan1996/DNA_bert_6"
 export output_dir=""

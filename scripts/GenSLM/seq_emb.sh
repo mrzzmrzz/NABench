@@ -1,10 +1,8 @@
 #!/bin/bash
-
-
+conda activate genslm
 export reference_sheet=""
 export output_dir=""
 export dms_data_dir=""
-conda activate genslm
 mkdir -p "$output_dir"
     python3 seq_emb.py \
     --output_dir_path "$output_dir" \
