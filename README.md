@@ -6,12 +6,6 @@ NABench
 </h3>
 </div>
 
-<div align="center">
-<h4>
-  📄 <a href="https://openreview.net/forum?id=d0gvsym66h" target="_blank">Paper</a> ｜ 💻 <a href="https://github.com/mrzzmrzz/NABench" target="_blank">Code</a> | 📚 <a href="https://anonymous.4open.science/r/NABench-20CB/" target="_blank">Resources</a> 
-</h4>
-</div>
-
 ## Overview
 
 Variations in nucleotide sequences often lead to significant changes in fitness. Nucleotide Foundation Models (NFMs) have emerged as a new paradigm in fitness prediction, enabling increasingly accurate estimation of fitness directly from sequence. However, assessing the advantages of these models remains challenging due to the use of diverse and specific experimental datasets, and their performance often varies markedly across different nucleic acid families, complicating **fair comparisons**.
@@ -38,7 +32,7 @@ This suggests fundamental differences in the nature of the representations learn
 
 ## Baseline Models
 
-Our benchmark evaluates a total of 27 nucleotide foundation models, which are categorized into four main architectural classes: **BERT-like**, **GPT-like**, **Hyena**, and **LLaMA-based**.
+Our benchmark evaluates a total of 29 nucleotide foundation models, which are categorized into four main architectural classes: **BERT-like**, **GPT-like**, **Hyena**, and **LLaMA-based**.
 
 | Model | Params | Max Length | Tokenization | Architecture |
 |---|---|---|---|---|
@@ -84,16 +78,6 @@ FILENAME="NABench_DMS_assays.zip"
 curl -o ${FILENAME} https://your-hosting-url/NABench/${FILENAME} # Please replace with your data hosting URL
 unzip ${FILENAME} && rm ${FILENAME}
 ```
-| Data | Size (unzipped) | Filename |
-|---|---|---|
-| DMS Assays (processed) | 50MB | NABench_DMS_assays.zip |
-| SELEX Assays (processed) | 2.1GB | NABench_SELEX_assays.zip |
-| Zero-shot Scores (DMS) | 1.5GB | zero_shot_DMS_scores.zip |
-| Zero-shot Scores (SELEX) | 8.0GB | zero_shot_SELEX_scores.zip |
-| Supervised Scores | 1.2GB | supervised_scores.zip |
-| Cross-Validation Folds | 200MB | cv_folds.zip |
-| Raw Data | 2.5GB | raw_data.zip |
-
 ## How to Contribute
 
 ### New Assays
@@ -154,14 +138,3 @@ This script will generate detailed performance reports, including metrics aggreg
 We thank all the researchers and experimentalists who developed the original assays and foundation models that made this benchmark possible. We also acknowledge the invaluable contributions of the communities behind **ProteinGym** and **RNAGym**, which heavily inspired this work.
 
 Please consider citing the corresponding papers of the models and datasets you use from this benchmark.
-
-## Citation
-If you use NABench in your work, please cite the following paper:
-
-```bibtex
-@article{nawork2024,
-  title={NABench: Large-Scale Benchmarks of Nucleotide Foundation Models for Fitness Prediction},
-  author={Antiquus S. Hippocampus and Natalia Cerebro and Amelie P. Amygdale and Ji Q. Ren and Yevgeny LeNet},
-  year={2024},
-  journal={ICLR 2026 Conference Track on Datasets and Benchmarks}
-}
