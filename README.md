@@ -132,6 +132,18 @@ python evaluate.py --scores_dir path/to/scores --output_dir benchmarks/
 ```
 This script will generate detailed performance reports, including metrics aggregated by different dimensions (e.g., nucleic acid type, evaluation setting).
 
+## Citation
+If you find this codebase useful for your research, please consider citing our paper.
+
+```
+@article{nabench,
+    title={{NABench}: Large-Scale Benchmarks of Nucleotide Foundation Models for Fitness Prediction},
+    author={Zhongmin Li, Runze Ma, Jiahao Tan, Chengzi Tan, Shuangjia Zheng},
+    journal={arXiv preprint arXiv:2511.02888},
+    year={2025}
+}
+
+```
 
 ## Acknowledgements
 
