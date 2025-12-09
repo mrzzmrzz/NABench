@@ -25,7 +25,6 @@ Figure 1: The NABench Benchmark Framework.
 Our comprehensive evaluation reveals a complex and interesting performance landscape where no single model or architectural family dominates across all settings. The most striking finding is a clear **performance dichotomy** between different architectural families across zero-shot and supervised settings.
 
 -   In the zero-shot setting, **autoregressive models** (e.g., GPT-like) and **state-space models** (e.g., Hyena/Evo series) show a clear advantage.
-
 -   When labeled data is introduced, in supervised and few-shot scenarios, many **BERT-like models** demonstrate a remarkable ability to learn, often outperforming the generative models.
 
 This suggests fundamental differences in the nature of the representations learned by these architectures. Detailed performance files and more in-depth analyses (e.g., breakdowns by nucleic acid type, mutational depth) can be found in the benchmarks folder.
@@ -68,16 +67,9 @@ Our benchmark evaluates a total of 29 nucleotide foundation models, which are ca
 
 ## Resources
 
-Resources
-You can download all benchmark datasets and model scores. Please replace {FILENAME} with the specific file you wish to download.
+At the moment, the DMS assay data used in the paper are already available directly in the `data` directory. For the SELEX data used in the manuscript, we are still finalizing the organization and cleaning of the processed results. We plan to release these data publicly within the next few months.
 
-For example, you can download and unzip all processed DMS assay data using the following command:
 
-```bash
-FILENAME="NABench_DMS_assays.zip"
-curl -o ${FILENAME} https://your-hosting-url/NABench/${FILENAME} # Please replace with your data hosting URL
-unzip ${FILENAME} && rm ${FILENAME}
-```
 ## How to Contribute
 
 ### New Assays
@@ -111,13 +103,13 @@ conda activate nabench
 # Install dependencies with pip
 pip install -r requirements.txt
 ```
-Alternatively, you can use poetry or another package manager with the pyproject.toml file.
 
 Download Data
 Download the necessary data from the Resources section above and unzip it into your project's root directory or a specified path.
 
 Generate Sequence Embeddings
 Our scripts directory provides a standardized embedding extraction pipeline for each model. To generate embeddings for a specific model, run:
+
 ```bash
 # Example for DNABERT
 bash scripts/dnabert/seq_emb.sh path/to/input/data.csv path/to/output/embeddings.pt
